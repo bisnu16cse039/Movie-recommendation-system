@@ -209,5 +209,7 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-# Dataset files for MovieLens 100k dataset
+# Dataset and model artifacts (large files, regenerate with train_model.py)
+models/
 ml-100k/
+logs/

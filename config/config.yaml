@@ -1,0 +1,69 @@
+# Configuration for Content-Based Movie Recommendation System
+
+# Data paths
+data:
+  raw_data_dir: "ml-100k/"
+  movies_file: "u.item"
+  ratings_file: "u.data"
+  users_file: "u.user"
+  
+# Model paths
+model:
+  artifacts_dir: "models/"
+  version: "v1.0.0"
+  
+# Feature engineering
+features:
+  year_weight: 0.1  # Weight for year feature (0.1 = 10% of genre weight)
+  genre_columns:
+    - "unknown"
+    - "Action"
+    - "Adventure"
+    - "Animation"
+    - "Children"
+    - "Comedy"
+    - "Crime"
+    - "Documentary"
+    - "Drama"
+    - "Fantasy"
+    - "Film-Noir"
+    - "Horror"
+    - "Musical"
+    - "Mystery"
+    - "Romance"
+    - "Sci-Fi"
+    - "Thriller"
+    - "War"
+    - "Western"
+
+# Similarity methods
+similarity:
+  methods:
+    - "cosine"  # Primary method based on CV results
+    - "jaccard"  # Secondary method
+  default_method: "cosine"
+
+# Training
+training:
+  min_rating_threshold: 3.5  # Minimum rating to consider as "liked"
+  random_seed: 42
+  
+# Evaluation
+evaluation:
+  k_values: [5, 10]  # K values for Precision@K and NDCG@K
+  min_relevant_rating: 4.0  # Minimum rating to consider as relevant
+  n_folds: 5  # Number of folds for cross-validation
+
+# Logging
+logging:
+  level: "INFO"
+  format: "json"
+  log_dir: "logs/"
+  
+# API settings (for future use)
+api:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  max_recommendations: 50
+  default_recommendations: 10
