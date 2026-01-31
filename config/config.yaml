@@ -60,11 +60,33 @@ logging:
   format: "json"
   log_dir: "logs/"
   
-# API settings (for future use)
+# API settings
 api:
   host: "0.0.0.0"
   port: 8000
-  reload: true
+  reload: true  # Auto-reload in development
+  log_level: "info"
   workers: 4
   max_recommendations: 50
   default_recommendations: 10
+
+# CORS settings (development - allow all)
+cors:
+  enabled: true
+  origins: ["*"]
+  allow_credentials: true
+  allow_methods: ["*"]
+  allow_headers: ["*"]
+
+# Cache settings (development - shorter TTL)
+cache:
+  enabled: true
+  ttl_seconds: 300  # 5 minutes in development
+  max_size: 100
+
+# Rate limiting (development - disabled)
+rate_limit:
+  enabled: false
+  requests_per_minute: 1000
+  burst: 100
+

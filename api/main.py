@@ -16,16 +16,20 @@ sys.path.insert(0, str(project_root))
 
 from src.models.recommender import ContentBasedRecommender
 from config.settings import Settings
+from api.middleware import RequestLoggingMiddleware
+from api.metrics import metrics_tracker
+
+# Load configuration
+settings = Settings.from_yaml()
 
 # Setup logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, settings.logging.level.upper()),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-# Load configuration
-settings = Settings.from_yaml()
+logger.info(f"Starting application in {settings.environment} environment")
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -36,14 +40,19 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Add CORS middleware with config
+if settings.cors.enabled:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors.origins,
+        allow_credentials=settings.cors.allow_credentials,
+        allow_methods=settings.cors.allow_methods,
+        allow_headers=settings.cors.allow_headers,
+    )
+    logger.info(f"CORS enabled with origins: {settings.cors.origins}")
+
+# Add logging and metrics middleware
+app.add_middleware(RequestLoggingMiddleware)
 
 # Global recommender instance (lazy loaded)
 recommender: Optional[ContentBasedRecommender] = None
@@ -528,6 +537,25 @@ async def general_exception_handler(request, exc):
             timestamp=datetime.utcnow().isoformat()
         ).dict()
     )
+
+
+@app.get("/metrics", tags=["monitoring"])
+async def get_metrics():
+    """Get application metrics
+    
+    Returns:
+        dict: Current metrics including:
+            - uptime_seconds: Application uptime
+            - total_requests: Total number of requests processed
+            - successful_requests: Number of successful requests (2xx-3xx)
+            - failed_requests: Number of failed requests (4xx-5xx)
+            - success_rate: Percentage of successful requests
+            - avg_latency_ms: Average request latency in milliseconds
+            - errors_by_type: Breakdown of errors by exception type
+            - requests_by_endpoint: Request count per endpoint
+            - status_codes: Request count per HTTP status code
+    """
+    return metrics_tracker.get_metrics()
 
 
 # ============================================================================

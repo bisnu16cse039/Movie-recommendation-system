@@ -1,0 +1,73 @@
+version: '3.8'
+
+# Development overrides for docker-compose.yml
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  # ==========================================================================
+  # Training Service - Development Mode
+  # ==========================================================================
+  training:
+    environment:
+      - RECSYS_ENVIRONMENT=development
+      - RECSYS_LOGGING__LEVEL=DEBUG
+    volumes:
+      # Mount source code for live editing
+      - ./config:/app/config:ro
+      - ./src:/app/src:ro
+      - ./train_model.py:/app/train_model.py:ro
+      # Keep data and output volumes
+      - ./ml-100k:/app/ml-100k:ro
+      - ./models:/app/models
+      - ./logs:/app/logs
+
+  # ==========================================================================
+  # API Service - Development Mode
+  # ==========================================================================
+  api:
+    environment:
+      - RECSYS_ENVIRONMENT=development
+      - RECSYS_API__RELOAD=true
+      - RECSYS_API__WORKERS=1
+      - RECSYS_LOGGING__LEVEL=DEBUG
+      - RECSYS_CORS__ORIGINS=["*"]
+    ports:
+      - "8000:8000"
+      - "5678:5678"  # Debugpy port for remote debugging
+    volumes:
+      # Mount source code for live editing (API will auto-reload)
+      - ./config:/app/config:ro
+      - ./src:/app/src:ro
+      - ./api:/app/api:ro
+      - ./start_api.py:/app/start_api.py:ro
+      # Mount data and models from host
+      - ./ml-100k:/app/ml-100k:ro
+      - ./models:/app/models:ro
+      - ./logs:/app/logs
+    command: >
+      bash -c "pip install debugpy &&
+               python start_api.py"
+    # Remove health check in dev (can interfere with debugging)
+    healthcheck:
+      disable: true
+
+  # ==========================================================================
+  # Retraining Service - Development Mode (Manual trigger only)
+  # ==========================================================================
+  retraining:
+    environment:
+      - RECSYS_ENVIRONMENT=development
+      - RECSYS_LOGGING__LEVEL=DEBUG
+    volumes:
+      # Mount source code for live editing
+      - ./config:/app/config:ro
+      - ./src:/app/src:ro
+      - ./train_model.py:/app/train_model.py:ro
+      # Keep data and output volumes
+      - ./ml-100k:/app/ml-100k:ro
+      - ./models:/app/models
+      - ./logs:/app/logs
+    # In dev, don't run cron - use manual trigger instead
+    # docker-compose -f docker-compose.yml -f docker-compose.dev.yml run --rm retraining python train_model.py
+    profiles:
+      - manual  # Only start when explicitly requested

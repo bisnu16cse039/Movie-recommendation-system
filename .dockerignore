@@ -1,0 +1,83 @@
+# Ignore Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Ignore Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Ignore model artifacts (will be generated in container)
+models/
+*.pkl
+*.h5
+*.pt
+*.pth
+
+# Ignore logs
+logs/
+*.log
+
+# Ignore test coverage
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+
+# Ignore Jupyter notebooks (not needed in production)
+*.ipynb
+.ipynb_checkpoints/
+notebooks/
+
+# Ignore test files
+tests/
+test_*.py
+*_test.py
+
+# Ignore documentation
+docs/
+*.md
+!README.md
+
+# Ignore git files
+.git/
+.gitignore
+.gitattributes
+
+# Ignore Docker files (avoid recursion)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Ignore CI/CD files
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Ignore environment files
+.env
+.env.*
+*.env
+
+# Ignore temporary files
+*.tmp
+*.bak
+*.swp
+temp/
+tmp/
+
+# Ignore large dataset files that should be mounted
+# (Keep only if you want to bake data into image)
+# ml-100k/

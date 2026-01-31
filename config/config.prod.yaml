@@ -1,0 +1,39 @@
+# Production Configuration Overrides
+
+# API settings for production
+api:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  reload: false  # Disable auto-reload in production
+  log_level: "warning"  # Less verbose in production
+  
+# CORS settings
+cors:
+  enabled: true
+  origins:
+    - "https://yourdomain.com"  # Replace with actual production domain
+  allow_credentials: true
+  allow_methods: ["GET", "POST"]
+  allow_headers: ["*"]
+
+# Cache settings
+cache:
+  enabled: true
+  ttl_seconds: 3600  # 1 hour cache in production
+  max_size: 1000  # Cache up to 1000 items
+
+# Rate limiting
+rate_limit:
+  enabled: true
+  requests_per_minute: 60
+  burst: 10
+
+# Logging
+logging:
+  level: "INFO"
+  format: "json"
+  log_dir: "logs/"
+  file_rotation: true
+  max_bytes: 10485760  # 10MB
+  backup_count: 5

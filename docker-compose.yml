@@ -1,0 +1,121 @@
+version: '3.8'
+
+# Movie Recommendation System - Docker Compose Configuration
+# Orchestrates training, API, and retraining services
+
+services:
+  # ==========================================================================
+  # Training Service - One-time model training
+  # ==========================================================================
+  training:
+    build:
+      context: .
+      target: training
+      dockerfile: Dockerfile
+    image: movie-recsys-training:latest
+    container_name: recsys-training
+    environment:
+      - RECSYS_ENVIRONMENT=production
+      - RECSYS_MODEL__VERSION=v1.0.0
+    volumes:
+      # Mount input data (read-only)
+      - ./ml-100k:/app/ml-100k:ro
+      # Mount output directory for model artifacts
+      - model-artifacts:/app/models
+      # Mount logs directory
+      - training-logs:/app/logs
+    networks:
+      - recsys-network
+    command: python train_model.py
+    restart: "no"  # Run once and exit
+
+  # ==========================================================================
+  # API Service - FastAPI application serving recommendations
+  # ==========================================================================
+  api:
+    build:
+      context: .
+      target: serving
+      dockerfile: Dockerfile
+    image: movie-recsys-api:latest
+    container_name: recsys-api
+    depends_on:
+      training:
+        condition: service_completed_successfully
+    environment:
+      - RECSYS_ENVIRONMENT=production
+      - RECSYS_API__HOST=0.0.0.0
+      - RECSYS_API__PORT=8000
+      - RECSYS_API__WORKERS=4
+      - RECSYS_API__RELOAD=false
+      - RECSYS_LOGGING__LEVEL=INFO
+      - RECSYS_CORS__ORIGINS=["*"]
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount model artifacts (read-only)
+      - model-artifacts:/app/models:ro
+      # Mount logs directory
+      - api-logs:/app/logs
+      # Mount dataset metadata (needed for movie info)
+      - ./ml-100k:/app/ml-100k:ro
+    networks:
+      - recsys-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # ==========================================================================
+  # Retraining Service - Scheduled model retraining (weekly)
+  # ==========================================================================
+  retraining:
+    build:
+      context: .
+      target: retraining
+      dockerfile: Dockerfile
+    image: movie-recsys-retraining:latest
+    container_name: recsys-retraining
+    environment:
+      - RECSYS_ENVIRONMENT=production
+      - RECSYS_MODEL__VERSION=v1.0.0
+    volumes:
+      # Mount input data (read-only)
+      - ./ml-100k:/app/ml-100k:ro
+      # Mount output directory for model artifacts (read-write)
+      - model-artifacts:/app/models
+      # Mount logs directory
+      - retraining-logs:/app/logs
+    networks:
+      - recsys-network
+    restart: unless-stopped
+    # Note: Cron runs weekly on Sunday at 2 AM
+    # For manual trigger: docker-compose run --rm retraining python train_model.py
+
+# =============================================================================
+# Named Volumes - Persistent storage
+# =============================================================================
+volumes:
+  model-artifacts:
+    driver: local
+    name: recsys-models
+  training-logs:
+    driver: local
+    name: recsys-training-logs
+  api-logs:
+    driver: local
+    name: recsys-api-logs
+  retraining-logs:
+    driver: local
+    name: recsys-retraining-logs
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  recsys-network:
+    driver: bridge
+    name: recsys-network

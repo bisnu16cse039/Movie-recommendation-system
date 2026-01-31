@@ -63,10 +63,33 @@ class APIConfig(BaseModel):
     host: str = "0.0.0.0"
     port: int = 8000
     reload: bool = True
+    log_level: str = "info"
     workers: int = 4
     max_recommendations: int = 50
     default_recommendations: int = 10
 
+
+class CORSConfig(BaseModel):
+    """CORS configuration"""
+    enabled: bool = True
+    origins: List[str] = Field(default_factory=lambda: ["*"])
+    allow_credentials: bool = True
+    allow_methods: List[str] = Field(default_factory=lambda: ["*"])
+    allow_headers: List[str] = Field(default_factory=lambda: ["*"])
+
+
+class CacheConfig(BaseModel):
+    """Cache configuration"""
+    enabled: bool = True
+    ttl_seconds: int = 300
+    max_size: int = 100
+
+
+class RateLimitConfig(BaseModel):
+    """Rate limiting configuration"""
+    enabled: bool = False
+    requests_per_minute: int = 1000
+    burst: int = 100
 
 class Settings(BaseSettings):
     """Main settings class that loads configuration from YAML and environment"""
@@ -79,6 +102,9 @@ class Settings(BaseSettings):
     evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     api: APIConfig = Field(default_factory=APIConfig)
+    cors: CORSConfig = Field(default_factory=CORSConfig)
+    cache: CacheConfig = Field(default_factory=CacheConfig)
+    rate_limit: RateLimitConfig = Field(default_factory=RateLimitConfig)
     
     # Environment-specific overrides
     environment: str = Field(default="development", env="ENVIRONMENT")
@@ -96,9 +122,14 @@ class Settings(BaseSettings):
     
     @classmethod
     def from_yaml(cls, config_path: str = "config/config.yaml") -> "Settings":
-        """Load settings from YAML file"""
+        """Load settings from YAML file with environment-specific overrides"""
         # Get project root
         project_root = Path(__file__).parent.parent
+        
+        # Determine environment
+        environment = os.getenv("ENVIRONMENT", "development").lower()
+        
+        # Load base config
         config_file = project_root / config_path
         
         if not config_file.exists():
@@ -107,6 +138,16 @@ class Settings(BaseSettings):
         
         with open(config_file, "r") as f:
             config_dict = yaml.safe_load(f)
+        
+        # Load environment-specific overrides if exists
+        if environment == "production":
+            prod_config_file = project_root / "config" / "config.prod.yaml"
+            if prod_config_file.exists():
+                with open(prod_config_file, "r") as f:
+                    prod_config = yaml.safe_load(f)
+                    # Merge prod config into base config
+                    config_dict = cls._merge_configs(config_dict, prod_config)
+                print(f"Loaded production configuration overrides")
         
         # Create nested config objects
         settings_dict = {}
@@ -127,8 +168,25 @@ class Settings(BaseSettings):
                 settings_dict["logging"] = LoggingConfig(**value)
             elif key == "api":
                 settings_dict["api"] = APIConfig(**value)
+            elif key == "cors":
+                settings_dict["cors"] = CORSConfig(**value)
+            elif key == "cache":
+                settings_dict["cache"] = CacheConfig(**value)
+            elif key == "rate_limit":
+                settings_dict["rate_limit"] = RateLimitConfig(**value)
         
-        return cls(**settings_dict, project_root=project_root)
+        return cls(**settings_dict, project_root=project_root, environment=environment)
+    
+    @staticmethod
+    def _merge_configs(base: dict, override: dict) -> dict:
+        """Recursively merge override config into base config"""
+        merged = base.copy()
+        for key, value in override.items():
+            if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
+                merged[key] = Settings._merge_configs(merged[key], value)
+            else:
+                merged[key] = value
+        return merged
     
     def get_data_path(self, filename: str) -> Path:
         """Get absolute path for data file"""
