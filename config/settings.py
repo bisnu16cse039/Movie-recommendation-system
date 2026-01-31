@@ -62,6 +62,7 @@ class APIConfig(BaseModel):
     """API configuration"""
     host: str = "0.0.0.0"
     port: int = 8000
+    reload: bool = True
     workers: int = 4
     max_recommendations: int = 50
     default_recommendations: int = 10
