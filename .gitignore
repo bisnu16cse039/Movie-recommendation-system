@@ -213,3 +213,4 @@ __marimo__/
 models/
 ml-100k/
 logs/
+aws-config.env
